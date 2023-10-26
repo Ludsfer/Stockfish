@@ -28,13 +28,13 @@
 #include <sstream>
 #include <vector>
 
+#include "uci.h"
 #include "incbin/incbin.h"
 #include "misc.h"
 #include "nnue/evaluate_nnue.h"
 #include "position.h"
-#include "thread.h"
 #include "types.h"
-#include "uci.h"
+#include "search.h"
 
 // Macro to embed the default efficiently updatable neural network (NNUE) file
 // data in the engine binary (using incbin.h, by Dale Weiler).
@@ -56,8 +56,6 @@ namespace Stockfish {
 
 namespace Eval {
 
-std::string currentEvalFileName = "None";
-
 // Tries to load a NNUE network at startup time, or when the engine
 // receives a UCI command "setoption name EvalFile value nn-[a-z0-9]{12}.nnue"
 // The name of the NNUE network is always retrieved from the EvalFile option.
@@ -65,17 +63,19 @@ std::string currentEvalFileName = "None";
 // network may be embedded in the binary), in the active working directory and
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
-void NNUE::init() {
+void NNUE::init(const std::string& uci_eval_file,
+                std::string&       currentEvalFileName,
+                const std::string& binaryDirectory) {
 
-    std::string eval_file = std::string(Options["EvalFile"]);
+    std::string eval_file = uci_eval_file;
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
 #if defined(DEFAULT_NNUE_DIRECTORY)
-    std::vector<std::string> dirs = {"<internal>", "", CommandLine::binaryDirectory,
+    std::vector<std::string> dirs = {"<internal>", "", binaryDirectory,
                                      stringify(DEFAULT_NNUE_DIRECTORY)};
 #else
-    std::vector<std::string> dirs = {"<internal>", "", CommandLine::binaryDirectory};
+    std::vector<std::string> dirs = {"<internal>", "", binaryDirectory};
 #endif
 
     for (const std::string& directory : dirs)
@@ -112,9 +112,9 @@ void NNUE::init() {
 }
 
 // Verifies that the last net used was loaded successfully
-void NNUE::verify() {
+void NNUE::verify(const std::string& uci_eval_file, const std::string& currentEvalFileName) {
 
-    std::string eval_file = std::string(Options["EvalFile"]);
+    std::string eval_file = uci_eval_file;
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
@@ -156,7 +156,7 @@ int Eval::simple_eval(const Position& pos, Color c) {
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
-Value Eval::evaluate(const Position& pos) {
+Value Eval::evaluate(const Position& pos, const Search::Worker& workerThread) {
 
     assert(!pos.checkers());
 
@@ -166,8 +166,8 @@ Value Eval::evaluate(const Position& pos) {
     int   simpleEval = simple_eval(pos, stm) + (int(pos.key() & 7) - 3);
 
     bool lazy = std::abs(simpleEval) >= RookValue + KnightValue + 16 * shuffling * shuffling
-                                          + std::abs(pos.this_thread()->bestValue)
-                                          + std::abs(pos.this_thread()->rootSimpleEval);
+                                          + std::abs(workerThread.iterBestValue)
+                                          + std::abs(workerThread.rootSimpleEval);
 
     if (lazy)
         v = simpleEval;
@@ -176,7 +176,7 @@ Value Eval::evaluate(const Position& pos) {
         int   nnueComplexity;
         Value nnue = NNUE::evaluate(pos, true, &nnueComplexity);
 
-        int optimism = pos.this_thread()->optimism[stm];
+        int optimism = workerThread.optimism[stm];
 
         // Blend optimism and eval with nnue complexity and material imbalance
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 512;
@@ -199,16 +199,16 @@ Value Eval::evaluate(const Position& pos) {
 // a string (suitable for outputting to stdout) that contains the detailed
 // descriptions and values of each evaluation term. Useful for debugging.
 // Trace scores are from white's point of view
-std::string Eval::trace(Position& pos) {
+std::string Eval::trace(Position& pos, Search::Worker& workerThread) {
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";
 
     // Reset any global variable used in eval
-    pos.this_thread()->bestValue       = VALUE_ZERO;
-    pos.this_thread()->rootSimpleEval  = VALUE_ZERO;
-    pos.this_thread()->optimism[WHITE] = VALUE_ZERO;
-    pos.this_thread()->optimism[BLACK] = VALUE_ZERO;
+    workerThread.iterBestValue   = VALUE_ZERO;
+    workerThread.rootSimpleEval  = VALUE_ZERO;
+    workerThread.optimism[WHITE] = VALUE_ZERO;
+    workerThread.optimism[BLACK] = VALUE_ZERO;
 
     std::stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
@@ -219,11 +219,11 @@ std::string Eval::trace(Position& pos) {
     Value v;
     v = NNUE::evaluate(pos, false);
     v = pos.side_to_move() == WHITE ? v : -v;
-    ss << "NNUE evaluation        " << 0.01 * UCI::to_cp(v) << " (white side)\n";
+    ss << "NNUE evaluation        " << 0.01 * UciHandler::to_cp(v) << " (white side)\n";
 
-    v = evaluate(pos);
+    v = evaluate(pos, workerThread);
     v = pos.side_to_move() == WHITE ? v : -v;
-    ss << "Final evaluation       " << 0.01 * UCI::to_cp(v) << " (white side)";
+    ss << "Final evaluation       " << 0.01 * UciHandler::to_cp(v) << " (white side)";
     ss << " [with scaled NNUE, ...]";
     ss << "\n";
 

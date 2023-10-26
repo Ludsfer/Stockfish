@@ -22,22 +22,25 @@
 #include <cstdint>
 
 #include "misc.h"
-#include "search.h"
-#include "thread.h"
 #include "types.h"
 
 namespace Stockfish {
+
+class OptionsMap;
+
+namespace Search {
+struct LimitsType;
+}
 
 // The TimeManagement class computes the optimal time to think depending on
 // the maximum available time, the game move number, and other parameters.
 class TimeManagement {
    public:
-    void      init(Search::LimitsType& limits, Color us, int ply);
-    TimePoint optimum() const { return optimumTime; }
-    TimePoint maximum() const { return maximumTime; }
-    TimePoint elapsed() const {
-        return Search::Limits.npmsec ? TimePoint(Threads.nodes_searched()) : now() - startTime;
-    }
+    void init(Search::LimitsType& limits, Color us, int ply, const OptionsMap& options);
+
+    TimePoint optimum() const;
+    TimePoint maximum() const;
+    TimePoint elapsed() const;
 
     int64_t availableNodes;  // When in 'nodes as time' mode
 
@@ -45,9 +48,9 @@ class TimeManagement {
     TimePoint startTime;
     TimePoint optimumTime;
     TimePoint maximumTime;
-};
 
-extern TimeManagement Time;
+    bool useNodesTime;  // True if we are in 'nodes as time' mode
+};
 
 }  // namespace Stockfish
 

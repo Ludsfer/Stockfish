@@ -21,16 +21,39 @@
 
 #include <cstdint>
 #include <vector>
+#include <atomic>
+#include <cstddef>
 
 #include "misc.h"
 #include "movepick.h"
 #include "types.h"
+#include "position.h"
 
 namespace Stockfish {
 
-class Position;
+// Different node types, used as a template parameter
+enum NodeType {
+    NonPV,
+    PV,
+    Root
+};
+
+class TranspositionTable;
+class ThreadPool;
+class OptionsMap;
 
 namespace Search {
+
+struct ExternalShared {
+    ExternalShared(const OptionsMap& o, ThreadPool& tp, TranspositionTable& t) :
+        options(o),
+        threads(tp),
+        tt(t) {}
+
+    const OptionsMap&   options;
+    ThreadPool&         threads;
+    TranspositionTable& tt;
+};
 
 
 // Stack struct keeps track of the information we need to remember from nodes
@@ -61,7 +84,7 @@ struct RootMove {
 
     explicit RootMove(Move m) :
         pv(1, m) {}
-    bool extract_ponder_from_tt(Position& pos);
+    bool extract_ponder_from_tt(const TranspositionTable& tt, Position& pos);
     bool operator==(const Move& m) const { return pv[0] == m; }
     // Sort in descending order
     bool operator<(const RootMove& m) const {
@@ -103,12 +126,54 @@ struct LimitsType {
     int64_t           nodes;
 };
 
-extern LimitsType Limits;
 
-void init();
-void clear();
+void init(int);
+
+class Worker {
+   public:
+    Worker(Search::ExternalShared& es) :
+        // Unpack the ExternalShared struct into member variables
+        options(es.options),
+        threads(es.threads),
+        tt(es.tt) {}
+
+    Search::LimitsType limits;
+
+    size_t                pvIdx, pvLast;
+    std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
+    int                   selDepth, nmpMinPly;
+    Value                 iterBestValue, optimism[COLOR_NB];
+
+    Position              rootPos;
+    StateInfo             rootState;
+    Search::RootMoves     rootMoves;
+    Depth                 rootDepth, completedDepth;
+    Value                 rootDelta;
+    Value                 rootSimpleEval;
+    CounterMoveHistory    counterMoves;
+    ButterflyHistory      mainHistory;
+    CapturePieceToHistory captureHistory;
+    ContinuationHistory   continuationHistory[2][2];
+    PawnHistory           pawnHistory;
+    CorrectionHistory     correctionHistory;
+
+    const OptionsMap& options;
+
+   protected:
+    template<NodeType nodeType>
+    Value
+    search(Position& pos, Search::Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
+
+    ThreadPool&         threads;
+    TranspositionTable& tt;
+
+   private:
+    template<NodeType nodeType>
+    Value qsearch(Position& pos, Search::Stack* ss, Value alpha, Value beta, Depth depth = 0);
+};
 
 }  // namespace Search
+
 
 }  // namespace Stockfish
 

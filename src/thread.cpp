@@ -31,19 +31,19 @@
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
+#include "options_map.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
-#include "uci.h"
+#include "movepick.h"
+#include "types.h"
 
 namespace Stockfish {
 
-ThreadPool Threads;  // Global object
-
-
 // Constructor launches the thread and waits until it goes to sleep
 // in idle_loop(). Note that 'searching' and 'exit' should be already set.
-Thread::Thread(size_t n) :
+Thread::Thread(Search::ExternalShared& es, size_t n) :
+    Search::Worker(es),
     idx(n),
     stdThread(&Thread::idle_loop, this) {
 
@@ -108,7 +108,10 @@ void Thread::idle_loop() {
     // some Windows NUMA hardware, for instance in fishtest. To make it simple,
     // just check if running threads are below a threshold, in this case, all this
     // NUMA machinery is not needed.
-    if (Options["Threads"] > 8)
+    // @TODO what if the number of threads is changed after the thread is created?
+    // i.e. setoption name Threads value 7, and the setoption name Threads value 10
+    // only the last 3 threads will use the binding mechanism.
+    if (options["Threads"] > 8)
         WinProcGroup::bindThisThread(idx);
 
     while (true)
@@ -123,14 +126,14 @@ void Thread::idle_loop() {
 
         lk.unlock();
 
-        search();
+        id_loop();
     }
 }
 
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
-void ThreadPool::set(size_t requested) {
+void ThreadPool::set(Search::ExternalShared&& es) {
 
     if (threads.size() > 0)  // destroy any existing thread(s)
     {
@@ -140,19 +143,24 @@ void ThreadPool::set(size_t requested) {
             delete threads.back(), threads.pop_back();
     }
 
+    const size_t requested = es.options["Threads"];
+
     if (requested > 0)  // create new thread(s)
     {
-        threads.push_back(new MainThread(0));
+        threads.push_back(new MainThread(es, 0));
+
 
         while (threads.size() < requested)
-            threads.push_back(new Thread(threads.size()));
+            threads.push_back(new Thread(es, threads.size()));
         clear();
 
+        main()->wait_for_search_finished();
+
         // Reallocate the hash with the new threadpool size
-        TT.resize(size_t(Options["Hash"]));
+        es.tt.resize(es.options["Hash"], requested);
 
         // Init thread number dependent search params.
-        Search::init();
+        Search::init(requested);
     }
 }
 
@@ -167,22 +175,26 @@ void ThreadPool::clear() {
     main()->bestPreviousScore        = VALUE_INFINITE;
     main()->bestPreviousAverageScore = VALUE_INFINITE;
     main()->previousTimeReduction    = 1.0;
+    main()->tm.availableNodes        = 0;
 }
 
 
 // Wakes up main thread waiting in idle_loop() and
 // returns immediately. Main thread will wake up other threads and start the search.
-void ThreadPool::start_thinking(Position&                 pos,
-                                StateListPtr&             states,
-                                const Search::LimitsType& limits,
-                                bool                      ponderMode) {
+void ThreadPool::start_thinking(const OptionsMap&  options,
+                                Position&          pos,
+                                StateListPtr&      states,
+                                Search::LimitsType limits,
+                                bool               ponderMode) {
 
     main()->wait_for_search_finished();
 
     main()->stopOnPonderhit = stop = false;
-    increaseDepth                  = true;
     main()->ponder                 = ponderMode;
-    Search::Limits                 = limits;
+    main()->tm.init(limits, pos.side_to_move(), pos.game_ply(), options);
+
+    increaseDepth = true;
+
     Search::RootMoves rootMoves;
 
     for (const auto& m : MoveList<LEGAL>(pos))
@@ -191,7 +203,7 @@ void ThreadPool::start_thinking(Position&                 pos,
             rootMoves.emplace_back(m);
 
     if (!rootMoves.empty())
-        Tablebases::rank_root_moves(pos, rootMoves);
+        Tablebases::rank_root_moves(options, pos, rootMoves);
 
     // After ownership transfer 'states' becomes empty, so if we stop the search
     // and call 'go' again without setting a new position states.get() == nullptr.
@@ -207,10 +219,11 @@ void ThreadPool::start_thinking(Position&                 pos,
     // since they are read-only.
     for (Thread* th : threads)
     {
+        th->limits = limits;
         th->nodes = th->tbHits = th->nmpMinPly = th->bestMoveChanges = 0;
         th->rootDepth = th->completedDepth = 0;
         th->rootMoves                      = rootMoves;
-        th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState, th);
+        th->rootPos.set(pos.fen(), pos.is_chess960(), &th->rootState);
         th->rootState      = setupStates->back();
         th->rootSimpleEval = Eval::simple_eval(pos, pos.side_to_move());
     }

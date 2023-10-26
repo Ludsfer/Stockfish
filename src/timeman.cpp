@@ -22,27 +22,36 @@
 #include <cmath>
 
 #include "search.h"
-#include "uci.h"
+#include "options_map.h"
 
 namespace Stockfish {
 
-TimeManagement Time;  // Our global time management object
+
+TimePoint TimeManagement::optimum() const { return optimumTime; }
+TimePoint TimeManagement::maximum() const { return maximumTime; }
+TimePoint TimeManagement::elapsed() const {
+    // return useNodesTime ? TimePoint(Threads.nodes_searched()) : now() - startTime;
+    // @todo: bring back nodes_searched()
+    return now() - startTime;
+}
 
 
 // Called at the beginning of the search and calculates
 // the bounds of time allowed for the current game ply. We currently support:
 //      1) x basetime (+ z increment)
 //      2) x moves in y seconds (+ z increment)
-void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
-
+void TimeManagement::init(Search::LimitsType& limits,
+                          Color               us,
+                          int                 ply,
+                          const OptionsMap&   options) {
     // If we have no time, no need to initialize TM, except for the start time,
     // which is used by movetime.
     startTime = limits.startTime;
     if (limits.time[us] == 0)
         return;
 
-    TimePoint moveOverhead = TimePoint(Options["Move Overhead"]);
-    TimePoint npmsec       = TimePoint(Options["nodestime"]);
+    TimePoint moveOverhead = TimePoint(options["Move Overhead"]);
+    TimePoint npmsec       = TimePoint(options["nodestime"]);
 
     // optScale is a percentage of available time to use for the current move.
     // maxScale is a multiplier applied to optimumTime.
@@ -54,6 +63,8 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
     // must be much lower than the real engine speed.
     if (npmsec)
     {
+        useNodesTime = limits.npmsec;
+
         if (!availableNodes)                            // Only once at game start
             availableNodes = npmsec * limits.time[us];  // Time is in msec
 
@@ -100,7 +111,7 @@ void TimeManagement::init(Search::LimitsType& limits, Color us, int ply) {
     maximumTime =
       TimePoint(std::min(0.84 * limits.time[us] - moveOverhead, maxScale * optimumTime)) - 10;
 
-    if (Options["Ponder"])
+    if (options["Ponder"])
         optimumTime += optimumTime / 4;
 }
 
