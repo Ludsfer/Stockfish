@@ -60,7 +60,7 @@ class Thread: public Search::Worker {
 
 
 // MainThread is a derived class specific for main thread
-struct MainThread: public Thread {
+class MainThread: public Thread {
 
     using Thread::Thread;
 
