@@ -42,14 +42,14 @@ class TimeManagement {
     TimePoint maximum() const;
     TimePoint elapsed(size_t nodes) const;
 
-    int64_t availableNodes;  // When in 'nodes as time' mode
+    int64_t availableNodes = 0;  // When in 'nodes as time' mode
 
    private:
     TimePoint startTime;
     TimePoint optimumTime;
     TimePoint maximumTime;
 
-    bool useNodesTime;  // True if we are in 'nodes as time' mode
+    bool useNodesTime = false;  // True if we are in 'nodes as time' mode
 };
 
 }  // namespace Stockfish
