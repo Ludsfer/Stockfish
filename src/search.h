@@ -40,7 +40,10 @@ enum NodeType {
 
 class TranspositionTable;
 class ThreadPool;
+class Thread;
+class MainThread;
 class OptionsMap;
+class UciHandler;
 
 namespace Search {
 
@@ -131,25 +134,18 @@ void init(int);
 
 class Worker {
    public:
-    Worker(Search::ExternalShared& es) :
+    Worker(ExternalShared& es) :
         // Unpack the ExternalShared struct into member variables
         options(es.options),
         threads(es.threads),
         tt(es.tt) {}
 
-    Search::LimitsType limits;
 
-    size_t                pvIdx, pvLast;
-    std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
-    int                   selDepth, nmpMinPly;
-    Value                 iterBestValue, optimism[COLOR_NB];
+    // Public because evaluate uses this
+    Value iterBestValue, optimism[COLOR_NB];
+    Value rootSimpleEval;
 
-    Position              rootPos;
-    StateInfo             rootState;
-    Search::RootMoves     rootMoves;
-    Depth                 rootDepth, completedDepth;
-    Value                 rootDelta;
-    Value                 rootSimpleEval;
+    // Public because they need to be updatable by the stats
     CounterMoveHistory    counterMoves;
     ButterflyHistory      mainHistory;
     CapturePieceToHistory captureHistory;
@@ -157,19 +153,34 @@ class Worker {
     PawnHistory           pawnHistory;
     CorrectionHistory     correctionHistory;
 
-    const OptionsMap& options;
-
    protected:
     template<NodeType nodeType>
-    Value
-    search(Position& pos, Search::Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
+    Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
 
+    LimitsType limits;
+
+    size_t                pvIdx, pvLast;
+    std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
+    int                   selDepth, nmpMinPly;
+
+    Position  rootPos;
+    StateInfo rootState;
+    RootMoves rootMoves;
+    Depth     rootDepth, completedDepth;
+    Value     rootDelta;
+
+    const OptionsMap&   options;
     ThreadPool&         threads;
     TranspositionTable& tt;
 
    private:
     template<NodeType nodeType>
-    Value qsearch(Position& pos, Search::Stack* ss, Value alpha, Value beta, Depth depth = 0);
+    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
+
+    friend class Stockfish::Thread;
+    friend class Stockfish::MainThread;
+    friend class Stockfish::ThreadPool;
+    friend class Stockfish::UciHandler;
 };
 
 }  // namespace Search
