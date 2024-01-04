@@ -24,7 +24,6 @@
 
 #include "misc.h"
 #include "types.h"
-#include "tune.h"
 
 namespace Stockfish {
 

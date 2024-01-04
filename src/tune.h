@@ -26,8 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "types.h"
-
 namespace Stockfish {
 
 class OptionsMap;

@@ -28,7 +28,6 @@
 #include "movepick.h"
 #include "types.h"
 #include "position.h"
-#include "tune.h"
 
 namespace Stockfish {
 
