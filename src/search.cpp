@@ -237,8 +237,9 @@ void MainThread::id_loop() {
 
     // Send again PV info if we have a new best thread
     if (bestThread != this)
-        sync_cout << UciHandler::pv(*bestThread, tm.elapsed(), threads.nodes_searched(),
-                                    threads.tb_hits(), tt.hashfull(), TB::RootInTB)
+        sync_cout << UciHandler::pv(*bestThread, tm.elapsed(threads.nodes_searched()),
+                                    threads.nodes_searched(), threads.tb_hits(), tt.hashfull(),
+                                    TB::RootInTB)
                   << sync_endl;
 
     sync_cout << "bestmove "
@@ -380,10 +381,10 @@ void Thread::id_loop() {
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
                 if (mainThread && multiPV == 1 && (iterBestValue <= alpha || iterBestValue >= beta)
-                    && mainThread->tm.elapsed() > 3000)
-                    sync_cout << UciHandler::pv(*mainThread, mainThread->tm.elapsed(),
-                                                threads.nodes_searched(), threads.tb_hits(),
-                                                tt.hashfull(), TB::RootInTB)
+                    && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
+                    sync_cout << UciHandler::pv(
+                      *mainThread, mainThread->tm.elapsed(threads.nodes_searched()),
+                      threads.nodes_searched(), threads.tb_hits(), tt.hashfull(), TB::RootInTB)
                               << sync_endl;
 
                 // In case of failing low/high increase aspiration window and
@@ -414,10 +415,11 @@ void Thread::id_loop() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (mainThread
-                && (threads.stop || pvIdx + 1 == multiPV || mainThread->tm.elapsed() > 3000))
-                sync_cout << UciHandler::pv(*mainThread, mainThread->tm.elapsed(),
-                                            threads.nodes_searched(), threads.tb_hits(),
-                                            tt.hashfull(), TB::RootInTB)
+                && (threads.stop || pvIdx + 1 == multiPV
+                    || mainThread->tm.elapsed(threads.nodes_searched()) > 3000))
+                sync_cout << UciHandler::pv(
+                  *mainThread, mainThread->tm.elapsed(threads.nodes_searched()),
+                  threads.nodes_searched(), threads.tb_hits(), tt.hashfull(), TB::RootInTB)
                           << sync_endl;
         }
 
@@ -470,7 +472,7 @@ void Thread::id_loop() {
                 totalTime = std::min(500.0, totalTime);
 
             // Stop the search if we have exceeded the totalTime
-            if (mainThread->tm.elapsed() > totalTime)
+            if (mainThread->tm.elapsed(threads.nodes_searched()) > totalTime)
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -479,7 +481,8 @@ void Thread::id_loop() {
                 else
                     threads.stop = true;
             }
-            else if (!mainThread->ponder && mainThread->tm.elapsed() > totalTime * 0.50)
+            else if (!mainThread->ponder
+                     && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 0.50)
                 threads.increaseDepth = false;
             else
                 threads.increaseDepth = true;
@@ -952,7 +955,8 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && this == threads.main() && threads.main()->tm.elapsed() > 3000)
+        if (rootNode && this == threads.main()
+            && threads.main()->tm.elapsed(threads.nodes_searched()) > 3000)
             sync_cout << "info depth " << depth << " currmove "
                       << UciHandler::move(move, pos.is_chess960()) << " currmovenumber "
                       << moveCount + pvIdx << sync_endl;
@@ -1880,7 +1884,7 @@ void MainThread::check_time() {
 
     static TimePoint lastInfoTime = now();
 
-    TimePoint elapsed = tm.elapsed();
+    TimePoint elapsed = tm.elapsed(threads.nodes_searched());
     TimePoint tick    = limits.startTime + elapsed;
 
     if (tick - lastInfoTime >= 1000)

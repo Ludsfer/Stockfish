@@ -40,7 +40,7 @@ class TimeManagement {
 
     TimePoint optimum() const;
     TimePoint maximum() const;
-    TimePoint elapsed() const;
+    TimePoint elapsed(size_t nodes) const;
 
     int64_t availableNodes;  // When in 'nodes as time' mode
 
