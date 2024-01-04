@@ -16,8 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPTIONS_MAP_H_INCLUDED
-#define OPTIONS_MAP_H_INCLUDED
+#ifndef UCIOPTION_H_INCLUDED
+#define UCIOPTION_H_INCLUDED
 
 #include <cstddef>
 #include <functional>

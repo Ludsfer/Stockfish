@@ -34,7 +34,7 @@
 #include "search.h"
 #include "syzygy/tbprobe.h"
 #include "benchmark.h"
-#include "options_map.h"
+#include "ucioption.h"
 #include "movegen.h"
 #include "types.h"
 

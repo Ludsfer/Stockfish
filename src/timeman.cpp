@@ -22,7 +22,7 @@
 #include <cmath>
 
 #include "search.h"
-#include "options_map.h"
+#include "ucioption.h"
 
 namespace Stockfish {
 

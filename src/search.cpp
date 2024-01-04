@@ -37,7 +37,7 @@
 #include "movepick.h"
 #include "nnue/evaluate_nnue.h"
 #include "nnue/nnue_common.h"
-#include "options_map.h"
+#include "ucioption.h"
 #include "position.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"

@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "options_map.h"
+#include "ucioption.h"
 
 #include <algorithm>
 #include <cassert>

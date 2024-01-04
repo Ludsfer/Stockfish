@@ -28,7 +28,7 @@
 #include "misc.h"
 #include "position.h"
 
-#include "options_map.h"
+#include "ucioption.h"
 
 namespace Stockfish {
 

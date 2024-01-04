@@ -24,7 +24,7 @@
 #include <sstream>
 #include <string>
 
-#include "options_map.h"
+#include "ucioption.h"
 
 using std::string;
 
