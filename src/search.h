@@ -41,7 +41,7 @@ enum NodeType {
 class TranspositionTable;
 class ThreadPool;
 class Thread;
-class MainThread;
+struct MainThread;
 class OptionsMap;
 class UciHandler;
 
