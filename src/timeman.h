@@ -40,9 +40,9 @@ class TimeManagement {
 
     TimePoint optimum() const;
     TimePoint maximum() const;
-    TimePoint elapsed(size_t nodes) const;
+    TimePoint elapsed(std::size_t nodes) const;
 
-    int64_t availableNodes = 0;  // When in 'nodes as time' mode
+    std::int64_t availableNodes = 0;  // When in 'nodes as time' mode
 
    private:
     TimePoint startTime;
