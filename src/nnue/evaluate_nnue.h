@@ -30,7 +30,7 @@
 #include "../misc.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
-#include "../types.h"
+#include "../tune.h"
 
 namespace Stockfish {
 class Position;
