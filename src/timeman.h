@@ -20,6 +20,7 @@
 #define TIMEMAN_H_INCLUDED
 
 #include <cstdint>
+#include <cstddef>
 
 #include "misc.h"
 #include "types.h"
