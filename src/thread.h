@@ -42,7 +42,7 @@ class Thread: public Search::Worker {
     Thread(Search::ExternalShared&, size_t);
     virtual ~Thread();
 
-    void virtual id_loop();
+    virtual void id_loop();
 
     void   clear();
     void   idle_loop();
