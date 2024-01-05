@@ -34,7 +34,8 @@
 
 namespace Stockfish {
 
-static void* start_routine(void* ptr) {
+// free function to be passed to pthread_create()
+inline void* start_routine(void* ptr) {
     auto func = reinterpret_cast<std::function<void()>*>(ptr);
     (*func)();  // Call the function
     delete func;
