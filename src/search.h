@@ -139,7 +139,6 @@ class Worker {
         threads(es.threads),
         tt(es.tt) {}
 
-
     // Public because evaluate uses this
     Value iterBestValue, optimism[COLOR_NB];
     Value rootSimpleEval;
