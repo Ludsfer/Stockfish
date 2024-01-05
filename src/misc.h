@@ -177,7 +177,7 @@ void bindThisThread(size_t idx);
 }
 
 
-class CommandLine {
+struct CommandLine {
    public:
     CommandLine(int argc, char** argv);
 
