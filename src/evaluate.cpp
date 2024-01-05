@@ -63,11 +63,11 @@ namespace Eval {
 // network may be embedded in the binary), in the active working directory and
 // in the engine directory. Distro packagers may define the DEFAULT_NNUE_DIRECTORY
 // variable to have the engine search in a special directory in their distro.
-void NNUE::init(const std::string& uci_eval_file,
+void NNUE::init(const std::string& uciEvalFile,
                 std::string&       currentEvalFileName,
                 const std::string& binaryDirectory) {
 
-    std::string eval_file = uci_eval_file;
+    std::string eval_file = uciEvalFile;
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
@@ -112,9 +112,9 @@ void NNUE::init(const std::string& uci_eval_file,
 }
 
 // Verifies that the last net used was loaded successfully
-void NNUE::verify(const std::string& uci_eval_file, const std::string& currentEvalFileName) {
+void NNUE::verify(const std::string& uciEvalFile, const std::string& currentEvalFileName) {
 
-    std::string eval_file = uci_eval_file;
+    std::string eval_file = uciEvalFile;
     if (eval_file.empty())
         eval_file = EvalFileDefaultName;
 
