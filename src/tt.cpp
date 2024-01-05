@@ -139,6 +139,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 // occupation during a search. The hash is x permill full, as per UCI protocol.
 
 int TranspositionTable::hashfull() const {
+
     int cnt = 0;
     for (int i = 0; i < 1000; ++i)
         for (int j = 0; j < ClusterSize; ++j)
