@@ -60,8 +60,8 @@ class Thread: public Search::Worker {
 
 
 // MainThread is a derived class specific for main thread
-struct MainThread: public Thread {
-
+class MainThread: public Thread {
+   public:
     using Thread::Thread;
 
     void id_loop() override;

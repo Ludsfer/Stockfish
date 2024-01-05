@@ -41,7 +41,7 @@ enum NodeType {
 class TranspositionTable;
 class ThreadPool;
 class Thread;
-struct MainThread;
+class MainThread;
 class OptionsMap;
 class UciHandler;
 
@@ -176,7 +176,7 @@ class Worker {
     Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
 
     friend class Stockfish::Thread;
-    friend struct Stockfish::MainThread;
+    friend class Stockfish::MainThread;
     friend class Stockfish::ThreadPool;
     friend class Stockfish::UciHandler;
 };
