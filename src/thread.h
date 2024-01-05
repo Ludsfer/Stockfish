@@ -67,15 +67,19 @@ struct MainThread: public Thread {
     void id_loop() override;
     void check_time();
 
-    TimeManagement tm;
-
-    double           previousTimeReduction;
-    Value            bestPreviousScore;
-    Value            bestPreviousAverageScore;
-    Value            iterValue[4];
+    TimeManagement   tm;
     int              callsCnt;
-    bool             stopOnPonderhit;
     std::atomic_bool ponder;
+
+   private:
+    double previousTimeReduction;
+    Value  bestPreviousScore;
+    Value  bestPreviousAverageScore;
+    Value  iterValue[4];
+    bool   stopOnPonderhit;
+
+    friend class Thread;
+    friend class ThreadPool;
 };
 
 // ThreadPool struct handles all the threads-related stuff like init, starting,
