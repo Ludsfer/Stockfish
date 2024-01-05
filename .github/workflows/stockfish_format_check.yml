@@ -11,6 +11,9 @@ on:
     paths:
       - '**.cpp'
       - '**.h'
+concurrency: 
+  group: ${{ github.head_ref }}
+  cancel-in-progress: true
 jobs:
   Stockfish:
     name: clang-format check
