@@ -47,6 +47,8 @@ class UciHandler;
 
 namespace Search {
 
+// The UciHandler stores the uci options, thread pool, and transposition table.
+// This struct is used to easily forward data to the Search::Worker class.
 struct ExternalShared {
     ExternalShared(const OptionsMap& o, ThreadPool& tp, TranspositionTable& t) :
         options(o),
