@@ -11,9 +11,7 @@ on:
     branches:
       - master
       - tools
-concurrency: 
-  group: ${{ github.head_ref }}
-  cancel-in-progress: true
+
 jobs:
   Prerelease:
     if: github.ref == 'refs/heads/master'
