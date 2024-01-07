@@ -18,25 +18,25 @@
 
 #include "uci.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
-#include <cstdlib>
-#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <deque>
 #include <memory>
 #include <optional>
-#include <vector>
 #include <sstream>
+#include <vector>
 
-#include "nnue/evaluate_nnue.h"
+#include "benchmark.h"
 #include "evaluate.h"
+#include "movegen.h"
+#include "nnue/evaluate_nnue.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
-#include "benchmark.h"
-#include "ucioption.h"
-#include "movegen.h"
 #include "types.h"
+#include "ucioption.h"
 
 namespace Stockfish {
 
@@ -54,7 +54,7 @@ UciHandler::UciHandler(int argc, char** argv) :
     });
 
     options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) {
-        threads.main()->wait_for_search_finished();
+        threads.main_thread()->wait_for_search_finished();
         tt.resize(o, options["Threads"]);
     });
 
@@ -111,7 +111,7 @@ void UciHandler::loop() {
         // has played. The search should continue, but should also switch from pondering
         // to the normal search.
         else if (token == "ponderhit")
-            threads.main()->ponder = false;  // Switch to the normal search
+            threads.main_manager()->ponder = false;  // Switch to the normal search
 
         else if (token == "uci")
             sync_cout << "id name " << engine_info(true) << "\n"
@@ -231,7 +231,7 @@ void UciHandler::bench(Position& pos, std::istream& args, StateListPtr& states) 
             if (token == "go")
             {
                 go(pos, is, states);
-                threads.main()->wait_for_search_finished();
+                threads.main_thread()->wait_for_search_finished();
                 nodes += threads.nodes_searched();
             }
             else
@@ -264,11 +264,11 @@ void UciHandler::trace_eval(Position& pos) {
 
     Eval::NNUE::verify(options["EvalFile"], currentEvalFileName);
 
-    sync_cout << "\n" << Eval::trace(p, *threads.main()) << sync_endl;
+    sync_cout << "\n" << Eval::trace(p, *threads.main_thread()->worker.get()) << sync_endl;
 }
 
 void UciHandler::search_clear() {
-    threads.main()->wait_for_search_finished();
+    threads.main_thread()->wait_for_search_finished();
 
     tt.clear(options["Threads"]);
     threads.clear();
@@ -276,7 +276,7 @@ void UciHandler::search_clear() {
 }
 
 void UciHandler::setoption(std::istringstream& is) {
-    threads.main()->wait_for_search_finished();
+    threads.main_thread()->wait_for_search_finished();
     options.setoption(is);
 }
 
@@ -353,12 +353,12 @@ std::string UciHandler::move(Move m, bool chess960) {
     return move;
 }
 
-std::string UciHandler::pv(const Thread& workerThread,
-                           TimePoint     elapsed,
-                           uint64_t      nodesSearched,
-                           uint64_t      tb_hits,
-                           int           hashfull,
-                           bool          rootInTB) {
+std::string UciHandler::pv(const Search::Worker& workerThread,
+                           TimePoint             elapsed,
+                           uint64_t              nodesSearched,
+                           uint64_t              tb_hits,
+                           int                   hashfull,
+                           bool                  rootInTB) {
     std::stringstream ss;
     TimePoint         time      = elapsed + 1;
     const auto&       rootMoves = workerThread.rootMoves;

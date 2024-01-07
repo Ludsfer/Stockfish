@@ -19,15 +19,16 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
-#include <cstdint>
-#include <vector>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 
 #include "misc.h"
 #include "movepick.h"
-#include "types.h"
 #include "position.h"
+#include "timeman.h"
+#include "types.h"
 
 namespace Stockfish {
 
@@ -41,12 +42,13 @@ enum NodeType {
 class TranspositionTable;
 class ThreadPool;
 class Thread;
-class MainThread;
 class OptionsMap;
 class UciHandler;
 
 namespace Search {
 
+// Called at startup to initialize various lookup tables, after program startup
+void init(int);
 
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
@@ -119,8 +121,6 @@ struct LimitsType {
 };
 
 
-void init(int);
-
 // The UciHandler stores the uci options, thread pool, and transposition table.
 // This struct is used to easily forward data to the Search::Worker class.
 struct ExternalShared {
@@ -134,13 +134,57 @@ struct ExternalShared {
     TranspositionTable& tt;
 };
 
+class Worker;
+
+// Null Object Pattern
+class ISearchManager {
+   public:
+    virtual ~ISearchManager() {}
+    virtual void check_time(Search::Worker&) = 0;
+};
+
+// SearchManager manages the search from the main thread. It is responsible for
+// keeping track of the time, and storing data strictly related to the main thread.
+class SearchManager: public ISearchManager {
+   public:
+    void check_time(Search::Worker& worker) override;
+
+    Stockfish::TimeManagement tm;
+    int                       callsCnt;
+    std::atomic_bool          ponder;
+
+    double previousTimeReduction;
+    Value  bestPreviousScore;
+    Value  bestPreviousAverageScore;
+    Value  iterValue[4];
+    bool   stopOnPonderhit;
+
+    size_t id;
+};
+
+class NullSearchManager: public ISearchManager {
+   public:
+    void check_time(Search::Worker&) override {}
+};
+
 class Worker {
    public:
-    Worker(ExternalShared& es) :
+    Worker(ExternalShared& es, std::unique_ptr<ISearchManager> sm, size_t i) :
         // Unpack the ExternalShared struct into member variables
         options(es.options),
         threads(es.threads),
-        tt(es.tt) {}
+        tt(es.tt),
+        manager(std::move(sm)),
+        thread_idx(i) {}
+
+    // Reset histories, usually before a new game
+    void clear();
+
+    // Called when the program receives the UCI 'go'
+    // command. It searches from the root position and outputs the "bestmove".
+    void start_searching();
+
+    bool is_mainthread() const { return thread_idx == 0; }
 
     // Public because evaluate uses this
     Value iterBestValue, optimism[COLOR_NB];
@@ -154,9 +198,23 @@ class Worker {
     PawnHistory           pawnHistory;
     CorrectionHistory     correctionHistory;
 
-   protected:
+   private:
+    void iterative_deepening();
+
+    // Main search function for both PV and non-PV nodes
     template<NodeType nodeType>
     Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
+
+    // Quiescence search function, which is called by the main search
+    template<NodeType nodeType>
+    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
+
+    // Get a pointer to the search manager, only allowed to be called by the
+    // main thread.
+    SearchManager* main_manager() const {
+        assert(thread_idx == 0);
+        return static_cast<SearchManager*>(manager.get());
+    }
 
     LimitsType limits;
 
@@ -174,15 +232,16 @@ class Worker {
     ThreadPool&         threads;
     TranspositionTable& tt;
 
-   private:
-    template<NodeType nodeType>
-    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
+    // The main thread has a SearchManager, the others have a NullSearchManager
+    std::unique_ptr<ISearchManager> manager;
 
-    friend class Stockfish::Thread;
-    friend class Stockfish::MainThread;
+    size_t thread_idx;
+
     friend class Stockfish::ThreadPool;
     friend class Stockfish::UciHandler;
+    friend class SearchManager;
 };
+
 
 }  // namespace Search
 
