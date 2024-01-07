@@ -20,8 +20,11 @@
 #define SEARCH_H_INCLUDED
 
 #include <atomic>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "misc.h"
@@ -41,7 +44,6 @@ enum NodeType {
 
 class TranspositionTable;
 class ThreadPool;
-class Thread;
 class OptionsMap;
 class UciHandler;
 

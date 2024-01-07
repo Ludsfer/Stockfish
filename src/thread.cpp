@@ -23,7 +23,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <deque>
-#include <initializer_list>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -31,9 +30,9 @@
 #include "evaluate.h"
 #include "misc.h"
 #include "movegen.h"
-#include "movepick.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
+#include "timeman.h"
 #include "tt.h"
 #include "types.h"
 #include "ucioption.h"

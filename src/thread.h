@@ -23,13 +23,13 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <vector>
 
 #include "position.h"
 #include "search.h"
 #include "thread_win32_osx.h"
-#include "timeman.h"
 
 namespace Stockfish {
 
