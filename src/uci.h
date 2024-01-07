@@ -32,6 +32,10 @@
 
 namespace Stockfish {
 
+namespace Search {
+class Worker;
+}
+
 class Move;
 enum Square : int;
 using Value = int;
